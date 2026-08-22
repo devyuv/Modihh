@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Fly Dimo Fly</title>
+<meta name="description" content="Fly Dimo Fly — a Flappy Bird style dodge-the-barricades game.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="wrap">
+  <canvas id="game"></canvas>
+  <div id="hud"><div id="score-card"><div id="score">0</div></div></div>
+  <div class="toast" id="toast"></div>
+  <div id="overlay">
+    <h1>FLY DIMO FLY</h1>
+    <div class="sub">Tap to flap. Weave through Constable Dhakkan's barricades, grab golden samosas for a shield, and don't clip the top or bottom.</div>
+    <div class="stat" id="finalStat"></div>
+    <div id="best"></div>
+    <button id="playBtn">START</button>
+    <div id="controls-hint"><span>Tap / Click / Space to flap</span></div>
+  </div>
+  <div id="mute" aria-label="Toggle sound">&#128266;</div>
+</div>
+
+<audio id="sfxBump" preload="auto" src="assets/sfx-bump.mp3"></audio>
+<audio id="sfxBooster" preload="auto" src="assets/sfx-booster.mp3"></audio>
+<audio id="sfxCaught" preload="auto" src="assets/sfx-caught.mp3"></audio>
+<audio id="bgm" preload="auto" loop src="assets/bgm.mp3"></audio>
+
+<script src="game.js"></script>
+</body>
+</html>
