@@ -44,3 +44,21 @@ Any time you push to `main`, Vercel redeploys automatically.
 - Grab a golden coin for a temporary shield (glowing ring) that absorbs one hit
 - Clipping the ceiling just bounces you back down — only the ground and an
   unshielded barricade hit end the run
+
+## Installing as an app (PWA)
+
+This is a full Progressive Web App — it can be installed to a phone or
+desktop home screen and works offline after the first load.
+
+- **Android / Chrome / Edge**: an "Install App" button appears automatically
+  once the browser decides the site is installable. Tap it, or use the
+  browser's own menu → "Install app" / "Add to Home Screen".
+- **iOS Safari**: there's no automatic prompt on iOS, so the button instead
+  shows "Add to Home Screen" instructions — tap the Share icon, then
+  "Add to Home Screen".
+- **Desktop Chrome/Edge**: look for the install icon in the address bar, or
+  use the in-page "Install App" button.
+
+Once deployed on Vercel (HTTPS is required for installability — Vercel gives
+you this by default), the install prompt will work exactly the same way on
+the live URL.

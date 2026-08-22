@@ -8,6 +8,13 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#ff3d7f">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Fly Dimo">
+<link rel="icon" href="icons/icon-192.png">
 </head>
 <body>
 <div id="wrap">
@@ -23,6 +30,7 @@
     <div id="controls-hint"><span>Tap / Click / Space to flap</span></div>
   </div>
   <div id="mute" aria-label="Toggle sound">&#128266;</div>
+  <button id="installBtn" aria-label="Install app">&#8681;&nbsp;Install App</button>
 </div>
 
 <audio id="sfxBump" preload="auto" src="assets/sfx-bump.mp3"></audio>
@@ -31,5 +39,47 @@
 <audio id="bgm" preload="auto" loop src="assets/bgm.mp3"></audio>
 
 <script src="game.js"></script>
+<script>
+  // PWA: register service worker (enables installability + offline play)
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js').catch(()=>{});
+    });
+  }
+
+  // PWA: capture and defer the browser's install prompt (Android/Chrome/Edge)
+  let deferredInstallPrompt = null;
+  const installBtn = document.getElementById('installBtn');
+
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredInstallPrompt = e;
+    installBtn.style.display = 'flex';
+  });
+
+  installBtn.addEventListener('click', async () => {
+    if (!deferredInstallPrompt) return;
+    deferredInstallPrompt.prompt();
+    await deferredInstallPrompt.userChoice;
+    deferredInstallPrompt = null;
+    installBtn.style.display = 'none';
+  });
+
+  window.addEventListener('appinstalled', () => {
+    installBtn.style.display = 'none';
+  });
+
+  // iOS Safari has no beforeinstallprompt — show a manual hint instead,
+  // but only if not already running as an installed app.
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+  if (isIOS && !isStandalone) {
+    installBtn.textContent = '\u2191 Add to Home Screen';
+    installBtn.style.display = 'flex';
+    installBtn.addEventListener('click', () => {
+      alert('To install: tap the Share icon, then "Add to Home Screen".');
+    });
+  }
+</script>
 </body>
 </html>
