@@ -45,6 +45,32 @@ Any time you push to `main`, Vercel redeploys automatically.
 - Clipping the ceiling just bounces you back down — only the ground and an
   unshielded barricade hit end the run
 
+## Features
+
+- **Difficulty modes** — Easy / Normal / Hard (gap width + speed)
+- **Daily Challenge** — a seeded layout that's the same for everyone each day,
+  tracked separately from your all-time best
+- **Power-ups** — alongside the shield coin: a magnet (pulls nearby pickups
+  in), slow-mo (barricades ease up briefly), and a 2x score multiplier
+- **Moving barricades** — appear past score 15, drift up and down for extra
+  challenge
+- **Combo counter** — consecutive clean pipe passes and pickups build a
+  streak; every 5 combo grants a bonus
+- **Unlockable skins** — sunglasses, cape, and a golden look unlock at score
+  milestones (25 / 60 / 120), pick your skin from the menu
+- **Achievements** — 10 badges tracking coins collected, combos, scores, and
+  more, viewable from the menu
+- **Local leaderboard** — top 10 scores saved on-device, with a name prompt
+  on a new high score
+- **Run history chart** — your last 10 scores shown as a bar chart on the
+  game-over screen
+- **Score sharing** — generates a shareable score card image (uses the native
+  share sheet on mobile, downloads a PNG on desktop)
+- **Haptic feedback** — light vibration on shield hits, game over, and
+  achievement unlocks (supported devices only)
+- **Day / sunset / night weather** — the sky theme is randomized (or fixed
+  per-day in Daily Challenge mode) for visual variety between runs
+
 ## Installing as an app (PWA)
 
 This is a full Progressive Web App — it can be installed to a phone or

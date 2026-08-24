@@ -19,16 +19,74 @@
 <body>
 <div id="wrap">
   <canvas id="game"></canvas>
-  <div id="hud"><div id="score-card"><div id="score">0</div></div></div>
+
+  <!-- ===== In-game HUD ===== -->
+  <div id="hud">
+    <div id="score-card"><div id="score">0</div></div>
+    <div id="combo-card" class="hidden"><span id="combo">x0</span> combo</div>
+    <div id="powerup-tray"></div>
+  </div>
   <div class="toast" id="toast"></div>
+
+  <!-- ===== Main menu ===== -->
   <div id="overlay">
     <h1>FLY DIMO FLY</h1>
     <div class="sub">Tap to flap. Weave through Constable Dhakkan's barricades, grab golden samosas for a shield, and don't clip the top or bottom.</div>
+
+    <div class="picker-row" id="modePicker">
+      <button class="picker-btn active" data-mode="normal">Normal</button>
+      <button class="picker-btn" data-mode="daily">Daily Challenge</button>
+    </div>
+    <div class="picker-row" id="diffPicker">
+      <button class="picker-btn" data-diff="easy">Easy</button>
+      <button class="picker-btn active" data-diff="normal">Normal</button>
+      <button class="picker-btn" data-diff="hard">Hard</button>
+    </div>
+
+    <div id="skinRow"></div>
+
     <div class="stat" id="finalStat"></div>
     <div id="best"></div>
     <button id="playBtn">START</button>
+
+    <div class="menu-links">
+      <button class="link-btn" id="openLeaderboard">🏆 Leaderboard</button>
+      <button class="link-btn" id="openAchievements">🎖️ Achievements</button>
+    </div>
     <div id="controls-hint"><span>Tap / Click / Space to flap</span></div>
   </div>
+
+  <!-- ===== Game over panel ===== -->
+  <div id="gameOverPanel" class="hidden">
+    <h1>CAUGHT!</h1>
+    <div class="sub" id="gameOverSub">Constable Dhakkan's barricade got you.</div>
+    <div class="stat show" id="goScore">Score: 0</div>
+    <div id="goBest"></div>
+    <div id="goCombo"></div>
+    <canvas id="historyChart" width="260" height="70"></canvas>
+    <div class="go-buttons">
+      <button id="shareBtn">📤 Share Score</button>
+      <button id="retryBtn">FLY AGAIN</button>
+    </div>
+    <button class="link-btn" id="backToMenuBtn">← Menu</button>
+  </div>
+
+  <!-- ===== Leaderboard screen ===== -->
+  <div id="leaderboardPanel" class="hidden">
+    <h1>LEADERBOARD</h1>
+    <div class="sub">Top runs saved on this device.</div>
+    <div id="leaderboardList"></div>
+    <button class="link-btn" id="closeLeaderboard">← Back</button>
+  </div>
+
+  <!-- ===== Achievements screen ===== -->
+  <div id="achievementsPanel" class="hidden">
+    <h1>ACHIEVEMENTS</h1>
+    <div class="sub">Badges earned on this device.</div>
+    <div id="achievementsList"></div>
+    <button class="link-btn" id="closeAchievements">← Back</button>
+  </div>
+
   <div id="mute" aria-label="Toggle sound">&#128266;</div>
   <button id="installBtn" aria-label="Install app">&#8681;&nbsp;Install App</button>
 </div>
@@ -40,14 +98,12 @@
 
 <script src="game.js"></script>
 <script>
-  // PWA: register service worker (enables installability + offline play)
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
       navigator.serviceWorker.register('sw.js').catch(()=>{});
     });
   }
 
-  // PWA: capture and defer the browser's install prompt (Android/Chrome/Edge)
   let deferredInstallPrompt = null;
   const installBtn = document.getElementById('installBtn');
 
@@ -69,8 +125,6 @@
     installBtn.style.display = 'none';
   });
 
-  // iOS Safari has no beforeinstallprompt — show a manual hint instead,
-  // but only if not already running as an installed app.
   const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
   const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
   if (isIOS && !isStandalone) {
