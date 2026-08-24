@@ -2,6 +2,8 @@
 
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
+const faceImg = new Image();
+faceImg.src = 'assets/face.png';
 let DPR = Math.min(window.devicePixelRatio || 1, 2);
 let CW, CH;
 function resize(){
@@ -1090,13 +1092,18 @@ function drawPlayer(){
   ctx.moveTo(9,-4); ctx.lineTo(9 - Math.cos(armAngle)*14, -4 + Math.sin(armAngle)*14);
   ctx.stroke();
 
-  const headG = ctx.createRadialGradient(-3,-21,2,0,-18,12);
-  headG.addColorStop(0,'#ffd3a8');
-  headG.addColorStop(1,'#f2b98a');
-  ctx.fillStyle = headG;
-  ctx.beginPath();
-  ctx.arc(0,-18,11,0,Math.PI*2);
-  ctx.fill();
+  ctx.save();
+ctx.beginPath();
+ctx.arc(0,-18,11,0,Math.PI*2);
+ctx.clip();                      // circle ke andar hi image dikhegi
+if(faceImg.complete && faceImg.naturalWidth){
+  ctx.drawImage(faceImg, -11,-29, 22,22);  // x,y,width,height — head ke circle ke around fit
+} else {
+  // image load hone tak fallback color
+  ctx.fillStyle = '#f2b98a';
+  ctx.fillRect(-11,-29,22,22);
+}
+ctx.restore();
 
   ctx.fillStyle = '#241019';
   ctx.beginPath();
