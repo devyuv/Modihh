@@ -47,6 +47,11 @@ Any time you push to `main`, Vercel redeploys automatically.
 
 ## Features
 
+- **Dhruv (rival antagonist)** — a fictional flying rival who periodically
+  swoops in from the right after score 8, gives a brief "DHRUV INCOMING!"
+  warning, and homes in slightly on your height. Dodge him for a +10 bonus,
+  or get caught without a shield for a distinct "ELIMINATED!" ending with
+  its own sting instead of the usual caught sound
 - **Difficulty modes** — Easy / Normal / Hard (gap width + speed)
 - **Daily Challenge** — a seeded layout that's the same for everyone each day,
   tracked separately from your all-time best

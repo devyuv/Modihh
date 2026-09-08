@@ -2,8 +2,6 @@
 
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
-const faceImg = new Image();
-faceImg.src = 'assets/face.png';
 let DPR = Math.min(window.devicePixelRatio || 1, 2);
 let CW, CH;
 function resize(){
@@ -45,7 +43,8 @@ const Store = {
 const SFX = {
   bump: document.getElementById('sfxBump'),
   booster: document.getElementById('sfxBooster'),
-  caught: document.getElementById('sfxCaught')
+  caught: document.getElementById('sfxCaught'),
+  dhruv: document.getElementById('sfxDhruv')
 };
 const BGM = document.getElementById('bgm');
 const BGM_VOLUME = 0.6;
@@ -204,12 +203,17 @@ const ACHIEVEMENTS = [
   { id:'score_50',     title:'Sky Master',     desc:'Score 50 in a single run',       icon:'🌟', check: s=>s.bestScore>=50 },
   { id:'score_100',    title:'Legend',         desc:'Score 100 in a single run',      icon:'👑', check: s=>s.bestScore>=100 },
   { id:'shield_5',     title:'Shield Bearer',  desc:'Use 5 shields total',            icon:'🛡️', check: s=>s.totalShieldsUsed>=5 },
-  { id:'daily_player',  title:'Daily Grinder', desc:'Play a Daily Challenge run',     icon:'📅', check: s=>s.dailyRuns>=1 }
+  { id:'daily_player',  title:'Daily Grinder', desc:'Play a Daily Challenge run',     icon:'📅', check: s=>s.dailyRuns>=1 },
+  { id:'dhruv_dodge_5', title:'Rival Dodger',  desc:'Dodge Dhruv 5 times total',      icon:'🌀', check: s=>s.totalDhruvDodges>=5 }
 ];
 let unlockedAchievements = Store.get('flyDimoAchievementsUnlocked', []);
 let stats = Store.get('flyDimoStats', {
-  totalRuns:0, totalPickups:0, bestCombo:0, bestScore:0, totalShieldsUsed:0, dailyRuns:0
+  totalRuns:0, totalPickups:0, bestCombo:0, bestScore:0, totalShieldsUsed:0, dailyRuns:0,
+  totalDhruvDodges:0, totalDhruvEliminations:0
 });
+// Migration: older saves won't have the Dhruv fields yet.
+stats.totalDhruvDodges = stats.totalDhruvDodges || 0;
+stats.totalDhruvEliminations = stats.totalDhruvEliminations || 0;
 
 function checkAchievements(){
   const newlyUnlocked = [];
@@ -404,6 +408,67 @@ const player = {
   trail: []
 };
 
+// ---------- Dhruv (antagonist) ----------
+// Fictional rival flyer. Periodically swoops in from the right, tracking
+// the player's height a little. Colliding without a shield ends the run
+// with a distinct "eliminated by Dhruv" sting instead of the usual caught SFX.
+// Dodging him (letting him fly past) grants a bonus.
+const DHRUV_SPEED = 0.5;
+const DHRUV_HOMING = 0.0011;
+let dhruv = null;
+let dhruvSpawnTimer = 0;
+let dhruvNextSpawn = 9000;
+let dhruvDodges = 0;
+
+function maybeSpawnDhruv(dt){
+  if(score < 8) return;
+  if(dhruv) return;
+  dhruvSpawnTimer += dt;
+  if(dhruvSpawnTimer > dhruvNextSpawn){
+    dhruvSpawnTimer = 0;
+    dhruvNextSpawn = 14000 + rng()*8000;
+    dhruv = {
+      x: CW+40,
+      y: 60 + rng()*(CH-GROUND_H-120),
+      warned: false,
+      capeT: 0
+    };
+    showToast('DHRUV INCOMING!');
+    vibrate(30);
+  }
+}
+function updateDhruv(dt){
+  if(!dhruv) return;
+  dhruv.capeT += dt;
+  if(!dhruv.warned && dhruv.capeT > 800) dhruv.warned = true;
+  dhruv.x -= DHRUV_SPEED*dt;
+  const dy = player.y - dhruv.y;
+  dhruv.y += Math.max(-0.15, Math.min(0.15, dy*DHRUV_HOMING)) * dt;
+
+  if(!dhruv.hit && Math.abs(dhruv.x-player.x) < 24 && Math.abs(dhruv.y-player.y) < 24){
+    if(player.shield > 0){
+      dhruv.hit = true;
+      playSfx('bump');
+      vibrate(40);
+      flashT = 200;
+      shakeT = 150;
+      for(let k=0;k<10;k++) spawnParticle(player.x, player.y, '#8a2be2', true);
+      dhruv = null;
+    } else {
+      eliminatedByDhruv();
+      return;
+    }
+  }
+
+  if(dhruv && dhruv.x < player.x - 40){
+    dhruvDodges += 1;
+    score += 10;
+    document.getElementById('score').textContent = score;
+    showToast('DODGED DHRUV! +10');
+    dhruv = null;
+  }
+}
+
 function laneStartX(){ return CW*0.28; }
 
 function resetGame(){
@@ -417,6 +482,7 @@ function resetGame(){
   shakeT = 0; flashT = 0;
   combo = 0; runBestCombo = 0; runPickups = 0; runShields = 0;
   effects.magnet = 0; effects.slowmo = 0; effects.multiplier = 0;
+  dhruv = null; dhruvSpawnTimer = 0; dhruvNextSpawn = 9000+rng()*4000; dhruvDodges = 0;
   player.x = laneStartX();
   player.y = CH*0.42;
   player.vy = 0;
@@ -489,9 +555,10 @@ function startGame(){
   requestAnimationFrame(loop);
 }
 
-function endGame(){
+function endGame(cause){
+  cause = cause || 'barricade';
   state = 'dead';
-  playSfx('caught');
+  playSfx(cause==='dhruv' ? 'dhruv' : 'caught');
   vibrate([100,50,100]);
   shakeT = 380;
 
@@ -500,6 +567,8 @@ function endGame(){
   stats.bestCombo = Math.max(stats.bestCombo, runBestCombo);
   stats.bestScore = Math.max(stats.bestScore, score);
   stats.totalShieldsUsed += runShields;
+  stats.totalDhruvDodges += dhruvDodges;
+  if(cause==='dhruv') stats.totalDhruvEliminations += 1;
   if(mode==='daily') stats.dailyRuns += 1;
   Store.set('flyDimoStats', stats);
 
@@ -526,18 +595,28 @@ function endGame(){
   const madeLeaderboard = maybeAddToLeaderboard(score);
 
   setTimeout(()=>{
+    document.querySelector('#gameOverPanel h1').textContent = cause==='dhruv' ? 'ELIMINATED!' : 'CAUGHT!';
     document.getElementById('goScore').textContent = 'Score: '+score;
     document.getElementById('goBest').textContent = 'Best: '+BEST + (mode==='daily' ? '  •  Daily mode' : '');
     document.getElementById('goCombo').textContent = 'Best combo this run: x'+runBestCombo;
     document.getElementById('gameOverSub').textContent = madeLeaderboard
-      ? "Made the leaderboard! Constable Dhakkan's barricade still got you though."
-      : "Constable Dhakkan's barricade got you this time. Try threading the gap a little cleaner.";
+      ? (cause==='dhruv'
+          ? "Made the leaderboard! Dhruv still got you though."
+          : "Made the leaderboard! Constable Dhakkan's barricade still got you though.")
+      : (cause==='dhruv'
+          ? "Dhruv swooped in and got you this time. Watch for the \u201cDHRUV INCOMING\u201d warning next run."
+          : "Constable Dhakkan's barricade got you this time. Try threading the gap a little cleaner.");
     drawHistoryChart();
     document.getElementById('gameOverPanel').classList.remove('hidden');
     if(newSkins.length){
       newSkins.forEach((s,i)=> setTimeout(()=> showToast('👕 New skin: '+s.name+'!'), 400+i*1000));
     }
   }, 420);
+}
+
+function eliminatedByDhruv(){
+  dhruv = null;
+  endGame('dhruv');
 }
 
 function showToast(text){
@@ -639,6 +718,10 @@ function update(dt){
       for(let i=0;i<8;i++) spawnParticle(player.x, player.y, '#2ec4f1', true);
     }
   }
+
+  maybeSpawnDhruv(dt);
+  updateDhruv(dt);
+  if(state!=='playing') return;
 
   const groundY = CH - GROUND_H;
   if(player.y > groundY - 14){
@@ -983,6 +1066,105 @@ function drawPickup(c){
   ctx.restore();
 }
 
+function drawDhruv(d){
+  ctx.save();
+  ctx.translate(d.x, d.y);
+
+  if(!d.warned){
+    ctx.save();
+    ctx.globalAlpha = 0.6 + Math.sin(worldTime*0.02)*0.3;
+    ctx.strokeStyle = '#ff2050';
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(0,0,30,0,Math.PI*2); ctx.stroke();
+    ctx.restore();
+  }
+
+  // trailing cape
+  const flutter = Math.sin(d.capeT*0.01)*6;
+  ctx.fillStyle = '#3a1050';
+  ctx.beginPath();
+  ctx.moveTo(10,-8);
+  ctx.quadraticCurveTo(28, -2+flutter, 24, 14+flutter*0.6);
+  ctx.quadraticCurveTo(16, 6, 9, 3);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = '#8a2be2';
+  ctx.beginPath();
+  ctx.moveTo(10,-8); ctx.lineTo(17,-6); ctx.lineTo(10,-2);
+  ctx.closePath(); ctx.fill();
+
+  // torso
+  const torsoG = ctx.createLinearGradient(-11,-8,11,12);
+  torsoG.addColorStop(0,'#2a1140');
+  torsoG.addColorStop(1,'#160a24');
+  ctx.fillStyle = torsoG;
+  roundRect(ctx,-11,-8,22,20,7);
+  ctx.fill();
+  ctx.fillStyle = '#8a2be2';
+  roundRect(ctx,5,-8,6,20,4);
+  ctx.fill();
+
+  // arms
+  ctx.strokeStyle = '#2a1140';
+  ctx.lineWidth = 6;
+  ctx.lineCap = 'round';
+  const armSwing = Math.sin(d.capeT*0.012)*0.3;
+  ctx.beginPath();
+  ctx.moveTo(-9,-4); ctx.lineTo(-9 - 12, -4 + armSwing*14);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(9,-4); ctx.lineTo(9 + 12, -4 - armSwing*14);
+  ctx.stroke();
+
+  // head
+  const headG = ctx.createRadialGradient(-3,-21,2,0,-18,12);
+  headG.addColorStop(0,'#e8b98f');
+  headG.addColorStop(1,'#c99464');
+  ctx.fillStyle = headG;
+  ctx.beginPath();
+  ctx.arc(0,-18,11,0,Math.PI*2);
+  ctx.fill();
+
+  // slicked-back dark hair
+  ctx.fillStyle = '#0f0a14';
+  ctx.beginPath();
+  ctx.arc(0,-22,11,Math.PI,Math.PI*2.15);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(9,-24); ctx.quadraticCurveTo(15,-20,10,-14); ctx.quadraticCurveTo(12,-22,9,-24);
+  ctx.fill();
+
+  // angry eyebrows
+  ctx.strokeStyle = '#0f0a14';
+  ctx.lineWidth = 2;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(-7,-22); ctx.lineTo(-2,-20.5);
+  ctx.moveTo(2,-20.5); ctx.lineTo(7,-22);
+  ctx.stroke();
+
+  // eyes (narrow, focused)
+  ctx.fillStyle = '#0f0a14';
+  ctx.fillRect(-5,-19,3,1.6);
+  ctx.fillRect(2,-19,3,1.6);
+
+  // goatee
+  ctx.fillStyle = '#0f0a14';
+  ctx.beginPath();
+  ctx.moveTo(-4,-13); ctx.lineTo(4,-13); ctx.lineTo(1.5,-7); ctx.lineTo(-1.5,-7);
+  ctx.closePath();
+  ctx.fill();
+
+  // faint scar
+  ctx.strokeStyle = 'rgba(180,40,60,0.6)';
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.moveTo(6,-24); ctx.lineTo(8,-17);
+  ctx.stroke();
+
+  ctx.restore();
+}
+
 function drawPlayer(){
   player.trail.forEach((t)=>{
     const a = Math.max(0, t.life/260)*0.18;
@@ -1092,18 +1274,13 @@ function drawPlayer(){
   ctx.moveTo(9,-4); ctx.lineTo(9 - Math.cos(armAngle)*14, -4 + Math.sin(armAngle)*14);
   ctx.stroke();
 
-  ctx.save();
-ctx.beginPath();
-ctx.arc(0,-18,11,0,Math.PI*2);
-ctx.clip();                      // circle ke andar hi image dikhegi
-if(faceImg.complete && faceImg.naturalWidth){
-  ctx.drawImage(faceImg, -11,-29, 22,22);  // x,y,width,height — head ke circle ke around fit
-} else {
-  // image load hone tak fallback color
-  ctx.fillStyle = '#f2b98a';
-  ctx.fillRect(-11,-29,22,22);
-}
-ctx.restore();
+  const headG = ctx.createRadialGradient(-3,-21,2,0,-18,12);
+  headG.addColorStop(0,'#ffd3a8');
+  headG.addColorStop(1,'#f2b98a');
+  ctx.fillStyle = headG;
+  ctx.beginPath();
+  ctx.arc(0,-18,11,0,Math.PI*2);
+  ctx.fill();
 
   ctx.fillStyle = '#241019';
   ctx.beginPath();
@@ -1154,6 +1331,7 @@ function draw(){
   pipes.forEach(drawPipe);
   pickups.forEach(c=>{ if(!c.taken) drawPickup(c); });
   drawGround();
+  if(dhruv) drawDhruv(dhruv);
   drawPlayer();
 
   particles.forEach(p=>{
