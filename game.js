@@ -409,33 +409,27 @@ const player = {
 };
 
 // ---------- Dhruv (antagonist) ----------
-// Fictional rival flyer. Periodically swoops in from the right, tracking
+// Fictional rival flyer. Appears every 5 towers (pipes) passed, tracking
 // the player's height a little. Colliding without a shield ends the run
 // with a distinct "eliminated by Dhruv" sting instead of the usual caught SFX.
 // Dodging him (letting him fly past) grants a bonus.
 const DHRUV_SPEED = 0.5;
 const DHRUV_HOMING = 0.0011;
+const DHRUV_EVERY_N_TOWERS = 5;
 let dhruv = null;
-let dhruvSpawnTimer = 0;
-let dhruvNextSpawn = 9000;
+let pipesPassed = 0;
 let dhruvDodges = 0;
 
-function maybeSpawnDhruv(dt){
-  if(score < 8) return;
+function spawnDhruvNow(){
   if(dhruv) return;
-  dhruvSpawnTimer += dt;
-  if(dhruvSpawnTimer > dhruvNextSpawn){
-    dhruvSpawnTimer = 0;
-    dhruvNextSpawn = 14000 + rng()*8000;
-    dhruv = {
-      x: CW+40,
-      y: 60 + rng()*(CH-GROUND_H-120),
-      warned: false,
-      capeT: 0
-    };
-    showToast('DHRUV INCOMING!');
-    vibrate(30);
-  }
+  dhruv = {
+    x: CW+40,
+    y: 60 + rng()*(CH-GROUND_H-120),
+    warned: false,
+    capeT: 0
+  };
+  showToast('DHRUV INCOMING!');
+  vibrate(30);
 }
 function updateDhruv(dt){
   if(!dhruv) return;
@@ -482,7 +476,7 @@ function resetGame(){
   shakeT = 0; flashT = 0;
   combo = 0; runBestCombo = 0; runPickups = 0; runShields = 0;
   effects.magnet = 0; effects.slowmo = 0; effects.multiplier = 0;
-  dhruv = null; dhruvSpawnTimer = 0; dhruvNextSpawn = 9000+rng()*4000; dhruvDodges = 0;
+  dhruv = null; pipesPassed = 0; dhruvDodges = 0;
   player.x = laneStartX();
   player.y = CH*0.42;
   player.vy = 0;
@@ -719,7 +713,6 @@ function update(dt){
     }
   }
 
-  maybeSpawnDhruv(dt);
   updateDhruv(dt);
   if(state!=='playing') return;
 
@@ -752,6 +745,10 @@ function update(dt){
       score += gain;
       document.getElementById('score').textContent = score;
       bumpCombo();
+      pipesPassed += 1;
+      if(pipesPassed % DHRUV_EVERY_N_TOWERS === 0){
+        spawnDhruvNow();
+      }
     }
     if(p.x < -PIPE_W - 20){ pipes.splice(i,1); continue; }
 
